@@ -7,7 +7,7 @@ st.set_page_config(
     page_icon="🇨🇦",
     layout="wide"
 )
-st.markdown("# Demografia Kanady")
+st.markdown("# Demografia Kanady v1")
 
 
 df = pd.read_pickle("data/interim/population.csv")
