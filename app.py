@@ -2,9 +2,8 @@ import streamlit as st
 import pandas as pd
 import geopandas as gpd
 import plotly.express as px
-import plotly.io as pio
-from geojson_rewind import rewind
-import json
+
+
 
 st.set_page_config(
     page_title="Demografia Kanady",
