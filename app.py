@@ -8,7 +8,7 @@ import plotly.express as px
 st.set_page_config(
     page_title="Demografia Kanady",
     page_icon="🇨🇦",
-    # layout="wide"
+    layout="wide"
 )
 
 st.markdown("# Demografia Kanady")
