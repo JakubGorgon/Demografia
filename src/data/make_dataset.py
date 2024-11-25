@@ -21,6 +21,18 @@ df["Plec"] = df["Plec"].replace({"Total - gender": "Wszyscy",
                     "Women+": "Kobiety",
                     "Men+": "Mężczyźni"})
 
+df["Rok"] = df["Data"].dt.year
+
+df.set_index("Data", inplace=True)
+
+cols_to_keep = ["Rok", "Obszar", "Plec", "Wiek", "UOM", "Wartosc"]
+df = df[cols_to_keep]
+
+filt = df["UOM"]!="Persons"
+df_avg = df[filt]
+df_avg["Wiek"] = df_avg["Wiek"].replace({"Median age": "Mediana", "Average age": "Średnia"})
+df_avg.to_pickle("../../data/interim/population_averages.csv")
+
 list(df["Wiek"].unique())
 przedzialy_wiekowe = {
     "All ages": "Wszyscy",
@@ -49,17 +61,6 @@ przedzialy_wiekowe = {
 df["Wiek"] = df["Wiek"].replace(przedzialy_wiekowe, )
 filt = df["Wiek"].isin(przedzialy_wiekowe.values())
 df = df[filt]
-
-
-
-df["Rok"] = df["Data"].dt.year
-
-df.set_index("Data", inplace=True)
-
-cols_to_keep = ["Rok", "Obszar", "Plec", "Wiek", "UOM", "Wartosc"]
-df = df[cols_to_keep]
-
-
 
 df.to_pickle("../../data/interim/population.csv")
 
