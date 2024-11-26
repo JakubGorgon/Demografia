@@ -16,7 +16,7 @@ st.markdown("## *Populacja*")
 
 df = pd.read_pickle("data/interim/population.csv")
 df_avg = pd.read_pickle("data/interim/population_averages.csv")
-
+df_ur_zg = pd.read_pickle("data/interim/deaths_births.csv")
 
 filtr_obszar = st.selectbox(label="Obszar", 
                                      placeholder="Wybierz Obszar", 
@@ -52,7 +52,8 @@ with col1:
                   title=title)
     fig.update_layout(dragmode="pan",
                   width=1200,
-                  height=600)
+                  height=600,
+                  yaxis_title="Liczba ludności")
     st.plotly_chart(fig, config={"scrollZoom": True})
 
 with col2:
@@ -83,7 +84,8 @@ with col2:
                     title=title)
     fig.update_layout(dragmode="pan",
                     width=1200,
-                    height=600)    
+                    height=600,
+                    yaxis_title="Wiek")    
     st.plotly_chart(fig, config={"scrollZoom": True})
 
 st.markdown("---")
@@ -114,30 +116,94 @@ def prepare_map(df):
 
 geo_df, liczba_ludnosci_ogolem, max_prowincja, min_prowincja = prepare_map(df)
 
-fig = px.choropleth(
-    geo_df,
-    geojson=geo_df.geometry,
-    locations=geo_df.index,
-    color="Wartosc",
-     projection="mercator",
-    color_continuous_scale="Viridis"
-)
+col1, col2 = st.columns(2)
 
-fig.update_geos(
-    fitbounds="locations", 
-    visible=False,
-    projection_scale=5,
-    center={"lat": 60, "lon": -95}
-)
-fig.update_layout(
-    width=1200,  
-    height=600, 
-    margin={"r": 0, "t": 0, "l": 0, "b": 0}
-)
+with col1:
+    fig = px.choropleth(
+        geo_df,
+        geojson=geo_df.geometry,
+        locations=geo_df.index,
+        color="Wartosc",
+        projection="mercator",
+        color_continuous_scale="Viridis"
+    )
 
-st.markdown(f"### Liczba ludności w prowincjach Kanady w {int(geo_df["Rok"].unique())}:")
-st.write(f"* {liczba_ludnosci_ogolem} mieszkańców w całej Kanadzie")
-st.write(f"* **{max_prowincja.iloc[0,0]}** najbardziej liczną prowincją ({max_prowincja.iloc[0,1]} mieszkańców)")
-st.write(f"* **{min_prowincja.iloc[0,0]}** najmniej liczną prowincją ({min_prowincja.iloc[0,1]} mieszkańców)")
+    fig.update_geos(
+        fitbounds="locations", 
+        visible=False,
+        projection_scale=5,
+        center={"lat": 60, "lon": -95}
+    )
+    fig.update_layout(
+        width=1200,  
+        height=600, 
+        margin={"r": 0, "t": 0, "l": 0, "b": 0}
+    )
 
-st.plotly_chart(fig, use_container_width=False)
+    st.markdown(f"### Liczba ludności w prowincjach Kanady w {int(geo_df["Rok"].unique())}:")
+    st.write(f"* **{liczba_ludnosci_ogolem}** mieszkańców w całej Kanadzie")
+    st.write(f"* **{max_prowincja.iloc[0,0]}** najbardziej liczną prowincją ({max_prowincja.iloc[0,1]} mieszkańców)")
+    st.write(f"* **{min_prowincja.iloc[0,0]}** najmniej liczną prowincją ({min_prowincja.iloc[0,1]} mieszkańców)")
+
+    st.plotly_chart(fig, use_container_width=False)
+
+def prepare_barchart(df):
+    df = prepare_plot_data(df=df, 
+                           selected_plec_filters=["Kobiety", "Mężczyźni"],
+                           selected_wiek_filters=df["Wiek"].unique(),
+                           obszar=["Canada"])
+    filt = (df["Wiek"] != "Wszyscy") & (df["Rok"] == filtr_rok)
+    df = df[filt]
+    
+    df['Wiek'] = df['Wiek'].astype("str")
+    najliczniejszy_przedzial = df.groupby(by="Wiek")["Wartosc"].sum().idxmax()
+    
+    df_sredni_wiek = prepare_plot_data(df=df_avg, 
+                                       selected_plec_filters=["Kobiety", "Mężczyźni"],
+                                       obszar=["Canada"],
+                                       selected_wiek_filters=["Średnia"])
+    filt = df_sredni_wiek["Rok"] == filtr_rok    
+    df_sredni_wiek=df_sredni_wiek[filt]
+    
+    sredni_wiek_m = df_sredni_wiek[df_sredni_wiek["Plec"] == "Mężczyźni"]["Wartosc"].iloc[0]
+    sredni_wiek_k = df_sredni_wiek[df_sredni_wiek["Plec"] == "Kobiety"]["Wartosc"].iloc[0]
+    
+    return df, najliczniejszy_przedzial, sredni_wiek_m, sredni_wiek_k
+
+barplot_df, najliczniejszy_przedzial, sredni_wiek_m, sredni_wiek_k = prepare_barchart(df=df)
+
+with col2:
+    st.markdown(f"### Struktura wieku ludności Kanady w {filtr_rok}:")
+    st.write(f"* Najwięcej osób należało do przedziału **{najliczniejszy_przedzial}**")    
+    st.write(f"* Średnia wieku kobiet: **{sredni_wiek_k}**")
+    st.write(f"* Średnia wieku mężczyzn: **{sredni_wiek_m}**")
+    
+    fig = px.bar(data_frame=barplot_df, 
+                 x="Wiek", 
+                 color="Plec",
+                 y='Wartosc',
+                 barmode="group",
+                 color_discrete_map={"Mężczyźni": "#00b9ff",
+                                     "Kobiety":"#ff4600"})
+    fig.update_layout(
+        width=1200,  
+        height=600, 
+        margin={"r": 0, "t": 0, "l": 0, "b": 0}
+    )    
+    st.plotly_chart(fig)
+
+st.markdown("---")
+st.markdown("## *Urodzenia i Zgony*")
+
+df_ur_zg = df_ur_zg.melt(id_vars="Rok", var_name="Category", value_name="Wartosc")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    fig = px.line(data_frame=df_ur_zg, x="Rok", y="Wartosc", color="Category",
+                color_discrete_map={"Urodzenia": "green", "Zgony": "red"},
+                title="Liczba urodzeń i zgonów w Kanadzie w latach 1991-2022")
+
+    st.plotly_chart(fig)
+
+

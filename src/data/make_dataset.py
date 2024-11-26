@@ -2,8 +2,14 @@ import pandas as pd
 from stats_can import StatsCan
 
 sc = StatsCan()
+
 df = sc.table_to_df("17-10-0005-01")
 df.to_csv("../../data/raw/population_age_gender.csv")
+
+df_births = sc.table_to_df("13-10-0415-01")
+df_deaths = sc.table_to_df("13-10-0708-01")
+df_births.to_csv("../../data/raw/births.csv")
+df_deaths.to_csv("../../data/raw/deaths.csv")
 
 df["TERMINATED"].unique()
 filt = (df["TERMINATED"] == "t")
@@ -64,3 +70,45 @@ df = df[filt]
 
 df.to_pickle("../../data/interim/population.csv")
 
+df_births.head(3)
+df_deaths.head(3)
+
+cols_to_drop = ["DGUID", "UOM_ID", "SCALAR_FACTOR", "SCALAR_ID", "VECTOR",
+                "COORDINATE", "TERMINATED", "SYMBOL", "STATUS", "DECIMALS"]
+
+df_births.drop(columns = cols_to_drop, inplace=True)
+df_deaths.drop(columns = cols_to_drop, inplace=True)
+
+for i, df in enumerate([df_births, df_deaths]):
+    filt = (
+    (df["GEO"].str.contains("Canada")) & 
+    (df["UOM"] == "Number") & 
+    (df.iloc[:, 2].str.contains("Total"))
+    )
+    
+    df_filtered = df[filt].copy()
+    
+    df_filtered["Rok"] = df_filtered["REF_DATE"].dt.year
+
+    if i == 0:
+        wartosc="Urodzenia"
+    else:
+        wartosc = "Zgony"
+        
+    df_filtered.columns = ["Data", "Region", "Miesiac_urodzenia", "Charakterystyka",
+                           "UOM", wartosc, "Rok"]
+    df_filtered.set_index("Data", inplace=True)
+    cols_to_keep = ["Rok", "Region", "Miesiac_urodzenia", "UOM", wartosc]
+    df_filtered = df_filtered[cols_to_keep]
+    
+    
+    if i == 0:
+        df_births = df_filtered
+    else:
+        df_deaths = df_filtered   
+        
+df_urodzenia_zgony = df_births.merge(df_deaths,"inner",on="Rok")
+cols_to_keep = ["Rok", "Urodzenia", "Zgony"]
+df_urodzenia_zgony = df_urodzenia_zgony[cols_to_keep]
+
+df_urodzenia_zgony.to_pickle("../../data/interim/deaths_births.csv")
